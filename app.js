@@ -414,6 +414,15 @@ $('#login-go').onclick=async()=>{
  btn.disabled=false;btn.textContent='Entrar';
 };
 $('#login-forgot').onclick=()=>go('recovery');
+$('#login-resend').onclick=async()=>{
+ const email=normEmail($('#login-email').value);
+ if(!emailOk(email)){loginErr('Digite seu e-mail acima para reenviar.');$('#login-email').focus();return;}
+ if(!supa){loginErr('Indisponível: sem conexão.');return;}
+ const btn=$('#login-resend');btn.disabled=true;
+ try{const{error}=await supa.auth.resend({type:'signup',email});if(error)throw error;loginErr('');toast('E-mail de confirmação reenviado ✔');}
+ catch(e){loginErr('Não foi possível reenviar. Tente de novo.');}
+ btn.disabled=false;
+};
 $('#login-signup').onclick=()=>{const b=$('#sup-box');b.hidden=!b.hidden;const m=$('#sup-msg');m.textContent='';m.classList.remove('ok');};
 $('#sup-go').onclick=async()=>{
  const box=$('#sup-msg');box.classList.remove('ok');box.textContent='';
@@ -491,6 +500,8 @@ async function bootAuth(){
  try{const{data,error}=await supa.auth.getSession();session=data&&data.session;sessErr=error;}catch(e){sessErr=e;}
  // Link de recuperação: abre a troca de senha com a sessão temporária
  if(isRecovery&&session){go('recovery');$('#rec-req').hidden=true;$('#rec-set').hidden=false;history.replaceState(null,'',location.pathname);return;}
+ // Link com erro (expirado/já usado, ex: otp_expired): explica e oferece reenvio
+ if(/error=access_denied/.test(location.hash||'')){history.replaceState(null,'',location.pathname);go('login');loginErr('Link expirado ou já usado. Toque em Reenviar confirmação abaixo.');$('#login-resend').hidden=false;return;}
  // Sessão guardada neste aparelho (inclui volta do link de confirmação de cadastro): entra direto
  if(session){if(location.hash)history.replaceState(null,'',location.pathname);enterApp(session.user);return;}
  // Sem internet e sessão não pôde ser renovada: entra com o último usuário deste aparelho (dados são locais)
@@ -499,7 +510,7 @@ async function bootAuth(){
  go('login');
 }
 function authStatus(){if(!navigator.onLine)return 'sem internet';if(!window.supabase)return 'biblioteca indisponível';const c=window.OBRAFACIL_AUTH||{};if(!c.url||!c.anonKey)return 'backend não configurado'+(window._cfgWhy?' (detalhe: '+window._cfgWhy+')':'');return '';}
-function renderLoginStatic(){$('#login-email').value='';$('#login-pass').value='';$('#login-pass').type='password';$('#login-eye').textContent='Mostrar';loginErr('');$('#sup-box').hidden=true;const s=authStatus();$('#login-noconf').hidden=!s;if(s)$('#login-noconf').querySelector('.hint').innerHTML='<b>Login indisponível:</b> '+esc(s)+'. Conecte-se à internet e atualize o app. Se persistir, remova este app e instale pelo link oficial: <b>obrafacil-orcamentos.vercel.app</b>';}
+function renderLoginStatic(){$('#login-email').value='';$('#login-pass').value='';$('#login-pass').type='password';$('#login-eye').textContent='Mostrar';loginErr('');$('#sup-box').hidden=true;$('#login-resend').hidden=true;const s=authStatus();$('#login-noconf').hidden=!s;if(s)$('#login-noconf').querySelector('.hint').innerHTML='<b>Login indisponível:</b> '+esc(s)+'. Conecte-se à internet e atualize o app. Se persistir, remova este app e instale pelo link oficial: <b>obrafacil-orcamentos.vercel.app</b>';}
 // Diagnóstico: 5 toques no carimbo de versão mostram cfg/lib/rede
 (function(){let n=0,t=0;const v=$('#appver');if(v&&v.addEventListener)v.addEventListener('click',()=>{const now=Date.now();n=now-t<1500?n+1:1;t=now;if(n>=5){n=0;const c=(window.OBRAFACIL_AUTH||{});toast('diag cfg:'+(c.url?'ok':(window._cfgWhy||'falta'))+' lib:'+(window.supabase?'ok':'falta')+' net:'+(navigator.onLine?'on':'off')+' host:'+location.host);}});})();
 function updOnline(){$('#offline-bar').hidden=navigator.onLine;}

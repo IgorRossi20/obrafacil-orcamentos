@@ -458,8 +458,17 @@ $('#rec-send').onclick=async()=>{
  mark(emailEl,false);
  if(!emailOk(email)){$('#rec-msg').textContent='Informe um e-mail válido.';mark(emailEl,true);emailEl.focus();return;}
  if(!supa){$('#rec-msg').textContent='Indisponível: sem conexão ou backend não configurado.';return;}
+ const btnSend=$('#rec-send');btnSend.disabled=true;
  const redirectTo=location.origin+location.pathname;
- try{await supa.auth.resetPasswordForEmail(email,{redirectTo});}catch{}
+ try{
+  const{error}=await supa.auth.resetPasswordForEmail(email,{redirectTo});
+  if(error)throw error;
+ }catch(e){
+  const msg=String((e&&e.message)||'');
+  $('#rec-msg').textContent=/redirect/i.test(msg)?'Recuperação mal configurada no servidor. Avise o responsável.':'Sem conexão. Tente de novo.';
+  btnSend.disabled=false;return;
+ }
+ btnSend.disabled=false;
  const m=aMetrics();m.rec++;aSave(m);
  $('#rec-msg').textContent='Se o e-mail estiver cadastrado, você receberá o link de recuperação.'; // US03: sem revelar cadastro
 };

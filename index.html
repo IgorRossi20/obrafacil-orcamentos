@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ObraFácil Orçamentos</title>
+<meta name="description" content="Orçamentos rápidos e profissionais para pedreiros.">
+<meta name="theme-color" content="#15803d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="styles.css?v=9">
+</head>
+<body>
+<div id="offline-bar" hidden>Sem conexão — seus dados estão salvos no celular.</div>
+
+<header id="topbar">
+  <button id="btn-back" class="icon-btn" hidden aria-label="Voltar">←</button>
+  <h1 id="topbar-title">ObraFácil</h1>
+  <button id="btn-pro" class="avatar-btn" aria-label="Meus dados"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></button>
+</header>
+
+<main id="app">
+  <!-- LOGIN (PRD) — tela padrão: visível mesmo antes do JS rodar -->
+  <section class="view" id="view-login">
+    <div class="hero">
+      <div class="hero-txt">
+        <p class="hero-brand">ObraFácil Orçamentos</p>
+        <h2>Bem-vindo</h2>
+        <p>Acesse com seu e-mail e senha.</p>
+      </div>
+    </div>
+    <div class="card" id="login-noconf" hidden>
+      <p class="hint"><b>Login indisponível:</b> sem conexão ou backend não configurado. Conecte-se à internet e tente de novo.</p>
+    </div>
+    <div class="card">
+      <label>E-mail<input id="login-email" type="email" autocomplete="username" inputmode="email" maxlength="254" placeholder="voce@email.com"></label>
+      <label>Senha<div class="row"><input id="login-pass" type="password" autocomplete="current-password" class="grow" placeholder="Sua senha" maxlength="128"><button class="btn small secondary" id="login-eye" type="button">Mostrar</button></div><small class="capshint" id="login-caps" hidden>Caps Lock ativado</small></label>
+      <p class="hint" id="login-err" role="alert"></p>
+      <button class="btn primary big" id="login-go">Entrar</button>
+      <button class="btn ghost big" id="login-forgot" type="button">Esqueci minha senha</button>
+      <button class="btn ghost big" id="login-signup" type="button">Criar conta</button>
+      <div id="sup-box" hidden>
+        <label>E-mail<input id="sup-email" type="email" autocomplete="username" inputmode="email" maxlength="254" placeholder="voce@email.com"></label>
+        <label>Senha (mín. 6 caracteres)<div class="row"><input id="sup-pass" type="password" autocomplete="new-password" class="grow" placeholder="Escolha uma senha" maxlength="72"><button class="btn small secondary" id="sup-eye" type="button">Mostrar</button></div><div class="pw-meter" id="sup-meter"><i></i></div><small class="hint" id="sup-strength"></small><small class="capshint" id="sup-caps" hidden>Caps Lock ativado</small></label>
+        <label>Repita a senha<input id="sup-pass2" type="password" autocomplete="new-password" placeholder="Repita a senha" maxlength="72"></label>
+        <p class="hint" id="sup-msg" role="alert"></p>
+        <button class="btn secondary big" id="sup-go">Criar minha conta</button>
+      </div>
+    </div>
+    <p class="hint center" id="appver" style="cursor:pointer">ObraFácil · v9</p>
+  </section>
+  <!-- RECUPERAÇÃO -->
+  <section class="view" id="view-recovery" hidden>
+    <div class="card" id="rec-req">
+      <h3>Recuperar senha</h3>
+      <p class="hint">Informe seu e-mail para receber o link de recuperação.</p>
+      <label>E-mail<input id="rec-email" type="email" autocomplete="username" inputmode="email"></label>
+      <p class="hint" id="rec-msg" role="alert"></p>
+      <button class="btn primary big" id="rec-send">Enviar link</button>
+      <button class="btn ghost big" data-go="login" type="button">Voltar ao login</button>
+    </div>
+    <div class="card" id="rec-set" hidden>
+      <h3>Nova senha</h3>
+      <label>Nova senha (mín. 6 caracteres)<div class="row"><input id="rec-pass1" type="password" autocomplete="new-password" class="grow" maxlength="72"><button class="btn small secondary" id="rec-eye1" type="button">Mostrar</button></div><div class="pw-meter" id="rec-meter"><i></i></div><small class="hint" id="rec-strength"></small><small class="capshint" id="rec-caps" hidden>Caps Lock ativado</small></label>
+      <label>Repita a nova senha<div class="row"><input id="rec-pass2" type="password" autocomplete="new-password" class="grow"><button class="btn small secondary" id="rec-eye2" type="button">Mostrar</button></div></label>
+      <p class="hint" id="rec-msg2" role="alert"></p>
+      <button class="btn primary big" id="rec-save">Salvar nova senha</button>
+    </div>
+  </section>
+  <!-- HOME -->
+  <section class="view" id="view-home" hidden>
+    <div class="hero">
+      <div class="hero-txt">
+        <p class="hero-brand">ObraFácil Orçamentos</p>
+        <h2 id="greet-name">Olá!</h2>
+        <p>Vamos fazer um orçamento hoje?</p>
+      </div>
+      <button class="hero-avatar" data-go="pro" aria-label="Meus dados"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></button>
+    </div>
+    <div class="card" id="onboard-card" hidden>
+      <h3>Comece em 1 minuto</h3>
+      <div id="onboard-list" class="stack small"></div>
+    </div>
+    <button class="cta-card" data-go="wizard">
+      <span class="cta-ic"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg></span>
+      <span class="cta-txt"><b>Novo Orçamento</b><small>Criar um orçamento de obra agora</small></span>
+      <span class="cta-arrow"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+    </button>
+    <div class="grid2">
+      <button class="menu-card" data-go="budgets"><span class="m-ic green"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span><b>Meus Orçamentos</b><small>Ver todos</small></button>
+      <button class="menu-card" data-go="clients"><span class="m-ic amber"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.7c2.6.5 4.5 2.6 4.5 5.3"/></svg></span><b>Meus Clientes</b><small>Cadastros</small></button>
+      <button class="menu-card" data-go="services"><span class="m-ic green"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l5 5-2 2-5-5z"/><path d="M12 9L4 17l3 3 8-8"/></svg></span><b>Meus Serviços</b><small>Preços e itens</small></button>
+      <button class="menu-card" data-go="pilot"><span class="m-ic amber"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20v-6M11 20V6M17 20v-9"/><path d="M3 20h18"/></svg></span><b>Piloto</b><small>Uso e metas</small></button>
+    </div>
+    <div class="card">
+      <h3>Resumo</h3>
+      <div class="stats">
+        <div class="stat"><b id="r-aberto">0</b><span>Em aberto</span></div>
+        <div class="stat"><b id="r-enviados">0</b><span>Enviados</span></div>
+        <div class="stat ok"><b id="r-aprovados">0</b><span>Aprovados</span></div>
+      </div>
+      <div class="total-card"><div class="grow"><small>Valor total aprovado</small><b id="r-valor">R$ 0,00</b></div><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/><path d="M16 15h2"/></svg></div>
+      <div class="row gap">
+        <button class="btn small secondary" id="btn-backup-export">Backup</button>
+        <button class="btn small secondary" id="btn-backup-import">Restaurar</button>
+        <input type="file" id="file-import" accept="application/json" hidden>
+      </div>
+    </div>
+    <div class="card tip">Dica: toque no ícone de perfil no topo para cadastrar seus dados. Eles saem impressos no PDF.</div>
+    <div class="card">
+      <h3>Piloto — como está o uso?</h3>
+      <p class="hint" id="pilot-mini">Nenhum orçamento criado ainda.</p>
+      <div class="row gap">
+        <button class="btn small secondary" data-go="pilot">Ver piloto</button>
+        <button class="btn small secondary" id="btn-feedback">Dar opinião</button>
+        <button class="btn small secondary" id="btn-install" hidden>Instalar app</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PILOT -->
+  <section class="view" id="view-pilot" hidden>
+    <div class="card">
+      <h3>Piloto em obra — indicadores (§11)</h3>
+      <div id="pilot-stats" class="stack small"></div>
+      <div class="row gap">
+        <button class="btn small secondary" id="btn-metrics-export">Exportar métricas</button>
+        <button class="btn small danger" id="btn-metrics-reset">Zerar métricas</button>
+      </div>
+      <p class="hint">Métricas 100% locais (neste celular). Leve-as para a conversa de piloto. Roteiro completo no arquivo <b>PILOTO.md</b>.</p>
+      <p class="hint">Meta: orçamento simples criado e compartilhado em até 3 minutos.</p>
+    </div>
+    <div class="card">
+      <h3>Checklist de aceite (§10)</h3>
+      <div id="accept-list" class="stack small"></div>
+    </div>
+  </section>
+
+  <!-- BUDGETS -->
+  <section class="view" id="view-budgets" hidden>
+    <div class="search"><input id="search-budgets" placeholder="Buscar por cliente, obra ou número..."></div>
+    <div class="chips" id="filter-status">
+      <button data-f="todos" class="chip active">Todos</button>
+      <button data-f="rascunho" class="chip">Rascunhos</button>
+      <button data-f="enviado" class="chip">Enviados</button>
+      <button data-f="aprovado" class="chip">Aprovados</button>
+      <button data-f="recusado" class="chip">Recusados</button>
+      <button data-f="concluido" class="chip">Concluídos</button>
+    </div>
+    <div id="examples" class="stack" style="margin-bottom:8px"></div>
+    <div id="followups" class="stack" style="margin-bottom:8px"></div>
+    <div id="budget-list" class="stack"></div>
+    <button class="fab" data-go="wizard">＋</button>
+  </section>
+
+  <!-- CLIENTS -->
+  <section class="view" id="view-clients" hidden>
+    <div class="search"><input id="search-clients" placeholder="Buscar cliente..."></div>
+    <div id="client-list" class="stack"></div>
+    <button class="fab" id="fab-client">＋</button>
+  </section>
+
+  <!-- SERVICES -->
+  <section class="view" id="view-services" hidden>
+    <p class="hint">Cadastre seus preços uma vez e reuse em 1 toque.</p>
+    <div id="service-list" class="stack"></div>
+    <button class="fab" id="fab-service">＋</button>
+  </section>
+
+  <!-- PRO -->
+  <section class="view" id="view-pro" hidden>
+    <div class="card">
+      <h3>Conta</h3>
+      <div class="row"><b id="prof-name" class="grow">—</b></div>
+      <p class="hint" id="sync-status" aria-live="polite"></p>
+      <div class="row gap">
+        <button class="btn small secondary" id="btn-logout">Sair</button>
+      </div>
+    </div>    <div class="card">
+      <h3>Meus dados (saem no PDF)</h3>
+      <label>Nome / nome profissional *<input id="pro-nome" autocomplete="name"></label>
+      <label>Telefone / WhatsApp<input id="pro-fone" inputmode="tel" placeholder="(11) 98765-4321"></label>
+      <label>E-mail<input id="pro-email" inputmode="email"></label>
+      <label>Cidade<input id="pro-cidade"></label>
+      <label>CPF ou CNPJ (opcional)<input id="pro-doc"></label>
+      <label>Logotipo (opcional)<input id="pro-logo" type="file" accept="image/*"></label>
+      <div class="row"><img id="pro-logo-prev" alt="" style="max-height:64px;border-radius:8px;display:none"><button class="btn small secondary" id="pro-logo-del" hidden>Remover logo</button></div>
+      <button class="btn primary big" id="btn-pro-save">Salvar meus dados</button>
+    </div>
+    <div class="card">
+      <h3>Mensagem do WhatsApp</h3>
+      <p class="hint">Use: {cliente} {obra} {numero} {total} {subtotal} {desconto} {validade} {profissional} {itens}</p>
+      <label>Modelo da mensagem<textarea id="set-msg" rows="5"></textarea></label>
+      <div class="row gap">
+        <button class="btn small secondary" id="btn-msg-save">Salvar mensagem</button>
+        <button class="btn small ghost" id="btn-msg-reset">Restaurar padrão</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- WIZARD -->
+  <section class="view" id="view-wizard" hidden>
+    <ol class="steps">
+      <li data-s="1" class="active"><b class="step-n">1</b><span>Cliente</span></li>
+      <li data-s="2"><b class="step-n">2</b><span>Serviços</span></li>
+      <li data-s="3"><b class="step-n">3</b><span>Revisar</span></li>
+    </ol>
+    <div id="wz-1">
+      <div class="card">
+        <h3>1. Cliente e obra</h3>
+        <label>Cliente *<div class="row"><select id="wz-client" class="grow"></select><button class="btn secondary" id="wz-new-client" type="button">＋</button></div></label>
+        <label>Nome da obra<input id="wz-obra" placeholder="Ex: Reforma do banheiro"></label>
+        <label>Endereço da obra<input id="wz-endereco" placeholder="Rua, número, bairro"></label>
+        <div class="row between"><button class="btn ghost" data-go="home">Cancelar</button><button class="btn primary" id="wz-to-2">Próximo →</button></div>
+      </div>
+    </div>
+    <div id="wz-2" hidden>
+      <div class="card">
+        <h3>2. Serviços e valores <button class="btn small secondary" id="wz-add-item">＋ Adicionar serviço</button></h3>
+        <div id="wz-catalog" class="stack small"></div>
+        <div id="wz-items" class="stack"></div>
+        <div class="totals">
+          <div>Subtotal <b id="wz-sub">R$ 0,00</b></div>
+          <label class="row">Desconto R$ <input id="wz-desc" type="number" min="0" step="0.01" value="0" inputmode="decimal"></label>
+          <div class="grand">Total <b id="wz-total">R$ 0,00</b></div>
+        </div>
+        <div class="row between"><button class="btn ghost" id="wz-back-1">← Voltar</button><button class="btn primary" id="wz-to-3">Próximo →</button></div>
+      </div>
+    </div>
+    <div id="wz-3" hidden>
+      <div class="card">
+        <h3>3. Revisar e finalizar <button class="btn small ghost" id="wz-edit-toggle">Editar</button></h3>
+        <div id="wz-review"></div>
+        <label>Prazo estimado<input id="wz-prazo" placeholder="Ex: 10 dias"></label>
+        <label>Validade (dias)<input id="wz-validade" type="number" value="30" inputmode="numeric"></label>
+        <label>Condições de pagamento<input id="wz-pag" placeholder="Ex: 50% entrada + 50% na entrega"></label>
+        <label>Observações<textarea id="wz-obs" rows="2" placeholder="Ex: material por conta do cliente"></textarea></label>
+        <label>Status<select id="wz-status"><option value="rascunho">Rascunho</option><option value="enviado">Enviado</option><option value="aprovado">Aprovado</option><option value="recusado">Recusado</option><option value="concluido">Concluído</option></select></label>
+        <button class="btn primary big" id="wz-save"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>Salvar e ver PDF</button>
+        <div class="row between"><button class="btn ghost" id="wz-back-2">← Voltar</button><button class="btn ghost" data-go="home">Sair</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DETAIL -->
+  <section class="view" id="view-detail" hidden>
+    <div id="detail-sheet" class="sheet"></div>
+    <div class="card">
+      <div class="row wrap">
+        <button class="btn whatsapp grow" id="dt-pdf-wa"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>PDF no WhatsApp</button>
+        <button class="btn primary grow" id="dt-pdf"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Gerar PDF</button>
+        <button class="btn whatsapp grow" id="dt-wa"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.5 0-3-.4-4.2-1L3 20l1-5.3A8.5 8.5 0 1 1 21 11.5z"/></svg>WhatsApp</button>
+        <button class="btn secondary grow" id="dt-mail"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>E-mail</button>
+      </div>
+      <div class="row wrap">
+        <button class="btn small secondary" id="dt-edit">Editar</button>
+        <button class="btn small secondary" id="dt-duplicate">Duplicar</button>
+        <select id="dt-status" class="grow"></select>
+        <button class="btn small danger" id="dt-delete">Excluir</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SHARE -->
+  <section class="view" id="view-share" hidden>
+    <div class="card center">
+      <h3>Compartilhar Orçamento</h3>
+      <p class="hint" id="share-info">O orçamento será enviado em PDF.</p>
+      <div class="msg" id="share-msg"></div>
+      <button class="btn whatsapp big" id="sh-wa"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.5 0-3-.4-4.2-1L3 20l1-5.3A8.5 8.5 0 1 1 21 11.5z"/></svg>Compartilhar pelo WhatsApp</button>      <button class="btn secondary big" id="sh-mail"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Enviar por e-mail</button>
+      <button class="btn secondary big" id="sh-copy"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 11h6M9 15h4"/></svg>Copiar mensagem</button>
+      <button class="btn ghost" id="sh-sys"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6"/></svg>Mais opções do celular</button>
+      <button class="btn secondary big" id="sh-mark">Marcar como enviado</button>
+      <button class="btn ghost" data-go="budgets">Voltar</button>
+    </div>
+  </section>
+</main>
+
+<nav id="tabbar">
+  <button data-go="home" class="active"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg><span>Início</span></button>
+  <button data-go="budgets"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span>Orçam.</span></button>
+  <button data-go="clients"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.7c2.6.5 4.5 2.6 4.5 5.3"/></svg><span>Clientes</span></button>
+  <button data-go="services"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l5 5-2 2-5-5z"/><path d="M12 9L4 17l3 3 8-8"/></svg><span>Serviços</span></button>
+</nav>
+
+<!-- MODAL -->
+<div id="modal" hidden><div class="modal-box card">
+  <h3 id="modal-title">Novo</h3>
+  <div id="modal-body"></div>
+  <div class="row between"><button class="btn ghost" id="modal-close">Fechar</button><button class="btn primary" id="modal-save">Salvar</button></div>
+</div></div>
+
+<!-- PRINT / PDF -->
+<div id="print-area" hidden></div>
+
+<div id="toast" hidden></div>
+
+<script src="vendor/supabase.min.js"></script>
+<script src="auth-config.js"></script>
+<script src="app.js?v=9"></script>
+<script>
+if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').then(reg=>{
+ try{
+  setInterval(()=>reg.update().catch(()=>{}),30*60*1000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)reg.update().catch(()=>{});});
+  let done=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+   if(done)return;done=true;
+   if(!window._logged){toast('Nova versão instalada — atualizando...');setTimeout(()=>location.reload(),1200);}
+   else{toast('Nova versão pronta — salve e reabra o app para atualizar.');}
+  });
+ }catch(e){}
+}).catch(()=>{})); }
+</script>
+</body>
+</html>

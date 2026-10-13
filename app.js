@@ -93,8 +93,10 @@ function go(r){if(!authUser&&r!=='login'&&r!=='recovery')r='login'; // áreas pr
  if(r==='home')renderHome(); if(r==='budgets')renderBudgets(); if(r==='clients')renderClients(); if(r==='services')renderServices(); if(r==='pro')renderPro(); if(r==='wizard')renderWizard(); if(r==='pilot')renderPilot(); if(r==='login')renderLoginStatic(); if(r==='recovery'){/* estado definido pelo fluxo */}
  window.scrollTo(0,0);}
 // Novo orçamento via botões data-go sempre começa do zero. Edição e "orçamento de cliente" usam go('wizard') direto e preservam o draft.
-document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;if(b.dataset.go==='wizard'){startWizard();}go(b.dataset.go);});
-$('#btn-back').onclick=()=>go('home'); $('#btn-pro').onclick=()=>go('pro');
+// Sair do orçamento em andamento pede confirmação (toque acidental não perde o que foi digitado)
+function leaveWizardOk(){return route!=='wizard'||!draft.items.length||confirm('Sair sem salvar este orçamento? O que foi digitado será perdido.');}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;if(b.dataset.go!=='wizard'&&!leaveWizardOk())return;if(b.dataset.go==='wizard'){startWizard();}go(b.dataset.go);});
+$('#btn-back').onclick=()=>{if(leaveWizardOk())go('home');}; $('#btn-pro').onclick=()=>{if(leaveWizardOk())go('pro');};
 
 // HOME
 function renderHome(){$('#greet-name').textContent='Olá'+(DB.pro.nome?', '+DB.pro.nome.split(' ')[0]:'')+'!';
@@ -203,22 +205,30 @@ $('#wz-to-2').onclick=()=>{if(!$('#wz-client').value && !$('#wz-obra').value.tri
 $('#wz-back-1').onclick=()=>setStep(1); $('#wz-back-2').onclick=()=>setStep(2); $('#wz-to-3').onclick=()=>{if(!draft.items.length){toast('Adicione ao menos 1 serviço');return;}renderReview();setStep(3);};
 
 function renderWzItems(){
- $('#wz-catalog').innerHTML='<small>Toque para adicionar do catálogo:</small><div class="chips">'+DB.services.map(s=>`<button class="chip" data-cat="${s.id}">${esc(s.nome)} · ${BRL(s.preco)}</button>`).join('')+'</div>';
- $$('#wz-catalog [data-cat]').forEach(b=>b.onclick=()=>{const s=DB.services.find(x=>x.id===b.dataset.cat);draft.items.push({id:uid(),nome:s.nome,un:s.un,qtd:1,unit:s.preco,cat:s.cat});renderWzItems();});
- $('#wz-items').innerHTML=draft.items.map((it,idx)=>`<div class="item-card"><b>${esc(it.nome)||'Item '+(idx+1)}</b> <span class="cat">${CATS[it.cat]||''}</span>
-  <div class="grid"><input value="${esc(it.nome)}" data-k="nome" data-i="${idx}" placeholder="Nome do serviço/material" aria-label="Nome do item">
-  <div class="stepper"><button type="button" data-step="-1" data-i="${idx}" aria-label="Diminuir quantidade">−</button><input type="number" min="0" step="any" value="${it.qtd}" data-k="qtd" data-i="${idx}" inputmode="decimal" aria-label="Quantidade"><button type="button" data-step="1" data-i="${idx}" aria-label="Aumentar quantidade">+</button></div>
-  <input type="number" min="0" step="0.01" value="${it.unit}" data-k="unit" data-i="${idx}" inputmode="decimal" aria-label="Valor unitário"></div>
-  <div class="row"><select data-k="un" data-i="${idx}">${UNIDADES.map(u=>`<option ${u===it.un?'selected':''}>${u}</option>`).join('')}</select>
-  <select data-k="cat" data-i="${idx}">${Object.entries(CATS).map(([k,v])=>`<option value="${k}" ${k===it.cat?'selected':''}>${v}</option>`).join('')}</select>
-  <b class="line-total" style="margin-left:auto">${BRL((+it.qtd||0)*(+it.unit||0))}</b><button class="btn small danger" data-del="${idx}">✕</button></div></div>`).join('')||'<p class="hint">Nenhum item ainda. Adicione pelo catálogo ou no botão acima.</p>';
- $$('#wz-items [data-k]').forEach(el=>el.oninput=()=>{const i=+el.dataset.i,k=el.dataset.k;draft.items[i][k]=k==='qtd'||k==='unit'?+el.value:el.value;updTotals(el.closest('.item-card'),i);});
- $$('#wz-items [data-del]').forEach(b=>b.onclick=()=>{draft.items.splice(+b.dataset.del,1);renderWzItems();});
+ $('#wz-catalog').innerHTML=!DB.services.length?'<small class="hint">Seu catálogo está vazio — use "＋ Item fora do catálogo" abaixo ou cadastre preços em Serviços.</small>':'<small>Toque para adicionar do catálogo:</small><div class="chips">'+DB.services.map(s=>`<button class="chip" data-cat="${s.id}"><span>＋ ${esc(s.nome)}</span><small>${BRL(s.preco)}/${esc(s.un)}</small></button>`).join('')+'</div>';
+ $$('#wz-catalog [data-cat]').forEach(b=>b.onclick=()=>{const s=DB.services.find(x=>x.id===b.dataset.cat);draft.items.push({id:uid(),nome:s.nome,un:s.un,qtd:1,unit:s.preco,cat:s.cat});renderWzItems();focusLastItem();toast('Adicionado: '+s.nome);});
+ // Cartão do item no celular: nome | qtd (−/+) + valor unit. | unidade + categoria | total do item + remover
+ $('#wz-items').innerHTML=draft.items.map((it,idx)=>`<div class="item-card"><div class="item-head"><b>Item ${idx+1}</b><span class="cat">${CATS[it.cat]||''}</span></div>
+  <input value="${esc(it.nome)}" data-k="nome" data-i="${idx}" placeholder="Nome do serviço/material" aria-label="Nome do item">
+  <div class="item-grid">
+   <label class="mini">Quantidade<div class="stepper"><button type="button" data-step="-1" data-i="${idx}" aria-label="Diminuir quantidade">−</button><input type="number" min="0" step="any" value="${it.qtd}" data-k="qtd" data-i="${idx}" inputmode="decimal" aria-label="Quantidade"><button type="button" data-step="1" data-i="${idx}" aria-label="Aumentar quantidade">+</button></div></label>
+   <label class="mini">Valor unit. (R$)<input type="number" min="0" step="0.01" value="${it.unit}" data-k="unit" data-i="${idx}" inputmode="decimal" aria-label="Valor unitário"></label>
+   <label class="mini">Unidade<select data-k="un" data-i="${idx}">${UNIDADES.map(u=>`<option ${u===it.un?'selected':''}>${u}</option>`).join('')}</select></label>
+   <label class="mini">Categoria<select data-k="cat" data-i="${idx}">${Object.entries(CATS).map(([k,v])=>`<option value="${k}" ${k===it.cat?'selected':''}>${v}</option>`).join('')}</select></label>
+  </div>
+  <div class="item-foot"><span>Total do item <b class="line-total">${BRL((+it.qtd||0)*(+it.unit||0))}</b></span><button class="btn small danger" data-del="${idx}" aria-label="Remover item ${idx+1}">Remover</button></div></div>`).join('')||'<p class="hint">Nenhum item ainda. Toque num serviço do catálogo acima ou em ＋ Adicionar serviço.</p>';
+ $$('#wz-items [data-k]').forEach(el=>el.oninput=()=>{const i=+el.dataset.i,k=el.dataset.k;draft.items[i][k]=k==='qtd'||k==='unit'?+el.value:el.value;updTotals(el.closest('.item-card'),i);if(k==='cat'){const c=el.closest('.item-card').querySelector('.cat');if(c)c.textContent=CATS[el.value]||'';}});
+ $$('#wz-items [data-del]').forEach(b=>b.onclick=()=>{const i=+b.dataset.del;const nome=draft.items[i].nome||'item';draft.items.splice(i,1);renderWzItems();toast('Removido: '+nome);});
  $$('#wz-items [data-step]').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;const it=draft.items[i];it.qtd=Math.max(0,Math.round(((+it.qtd||0)+ +b.dataset.step)*100)/100);const card=b.closest('.item-card');card.querySelector('[data-k="qtd"]').value=it.qtd;updTotals(card,i);});
- const{sub,total}=calc(draft.items,draft.desconto);$('#wz-sub').textContent=BRL(sub);$('#wz-total').textContent=BRL(total);}
-function updTotals(card,i){const it=draft.items[i];if(card){const lt=card.querySelector('.line-total');if(lt)lt.textContent=BRL((+it.qtd||0)*(+it.unit||0));}const{sub,total}=calc(draft.items,draft.desconto);$('#wz-sub').textContent=BRL(sub);$('#wz-total').textContent=BRL(total);}
-$('#wz-desc').oninput=e=>{draft.desconto=Math.max(0,+e.target.value||0);const{sub,total,d}=calc(draft.items,draft.desconto);if((+e.target.value||0)>sub){e.target.value=sub;draft.desconto=sub;}$('#wz-sub').textContent=BRL(sub);$('#wz-total').textContent=BRL(total);};
-$('#wz-add-item').onclick=()=>{draft.items.push({id:uid(),nome:'',un:'m²',qtd:1,unit:0,cat:'mao_obra'});renderWzItems();};
+ showWzTotals();}
+// Total aparece no quadro de totais e na barra fixa do rodapé da etapa 2
+function showWzTotals(){const{sub,total}=calc(draft.items,draft.desconto);$('#wz-sub').textContent=BRL(sub);$('#wz-total').textContent=BRL(total);$('#wz-foot-total').textContent=BRL(total);}
+function focusLastItem(){const cards=$$('#wz-items .item-card');const c=cards[cards.length-1];if(c){c.scrollIntoView({behavior:'smooth',block:'center'});c.classList.add('flash');setTimeout(()=>c.classList.remove('flash'),900);}}
+function updTotals(card,i){const it=draft.items[i];if(card){const lt=card.querySelector('.line-total');if(lt)lt.textContent=BRL((+it.qtd||0)*(+it.unit||0));}showWzTotals();}
+// Tocar num campo numérico seleciona o valor: digitar 30 sobre "1" vira 30, não 130
+document.addEventListener('focusin',e=>{const t=e.target;if(t.matches&&t.matches('input[type=number]'))setTimeout(()=>{try{t.select();}catch(err){}},0);});
+$('#wz-desc').oninput=e=>{draft.desconto=Math.max(0,+e.target.value||0);const{sub,total,d}=calc(draft.items,draft.desconto);if((+e.target.value||0)>sub){e.target.value=sub;draft.desconto=sub;}showWzTotals();};
+$('#wz-add-item').onclick=()=>{draft.items.push({id:uid(),nome:'',un:'m²',qtd:1,unit:0,cat:'mao_obra'});renderWzItems();focusLastItem();const n=$$('#wz-items [data-k="nome"]');if(n.length)n[n.length-1].focus();};
 
 function renderReview(){const{sub,total}=calc(draft.items,draft.desconto);const c=DB.clients.find(x=>x.id===draft.clientId);
  $('#wz-review').innerHTML=`<p><b>Cliente:</b> ${esc(c?c.nome:'Avulso')}<br><b>Obra:</b> ${esc(draft.obra||'—')}<br><b>Itens:</b> ${draft.items.length}</p>

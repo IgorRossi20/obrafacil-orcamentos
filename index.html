@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="styles.css?v=9">
+<link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
 <div id="offline-bar" hidden>Sem conexão — seus dados estão salvos no celular.</div>
@@ -51,7 +51,7 @@
         <button class="btn secondary big" id="sup-go">Criar minha conta</button>
       </div>
     </div>
-    <p class="hint center" id="appver" style="cursor:pointer">ObraFácil · v9</p>
+    <p class="hint center" id="appver" style="cursor:pointer">ObraFácil · v10</p>
   </section>
   <!-- RECUPERAÇÃO -->
   <section class="view" id="view-recovery" hidden>
@@ -212,23 +212,24 @@
     <div id="wz-1">
       <div class="card">
         <h3>1. Cliente e obra</h3>
-        <label>Cliente *<div class="row"><select id="wz-client" class="grow"></select><button class="btn secondary" id="wz-new-client" type="button">＋</button></div></label>
+        <label>Cliente <small class="hint">(ou só o nome da obra)</small><div class="row"><select id="wz-client" class="grow"></select><button class="btn secondary" id="wz-new-client" type="button" aria-label="Cadastrar novo cliente">＋ Novo</button></div></label>
         <label>Nome da obra<input id="wz-obra" placeholder="Ex: Reforma do banheiro"></label>
         <label>Endereço da obra<input id="wz-endereco" placeholder="Rua, número, bairro"></label>
-        <div class="row between"><button class="btn ghost" data-go="home">Cancelar</button><button class="btn primary" id="wz-to-2">Próximo →</button></div>
+        <div class="row between wz-foot"><button class="btn ghost" data-go="home">Cancelar</button><button class="btn primary" id="wz-to-2">Próximo →</button></div>
       </div>
     </div>
     <div id="wz-2" hidden>
       <div class="card">
-        <h3>2. Serviços e valores <button class="btn small secondary" id="wz-add-item">＋ Adicionar serviço</button></h3>
+        <h3>2. Serviços e valores</h3>
         <div id="wz-catalog" class="stack small"></div>
         <div id="wz-items" class="stack"></div>
+        <button class="btn secondary big" id="wz-add-item" type="button">＋ Item fora do catálogo</button>
         <div class="totals">
           <div>Subtotal <b id="wz-sub">R$ 0,00</b></div>
-          <label class="row">Desconto R$ <input id="wz-desc" type="number" min="0" step="0.01" value="0" inputmode="decimal"></label>
+          <label class="row">Desconto R$ <input id="wz-desc" type="number" min="0" step="0.01" value="0" placeholder="0,00" inputmode="decimal"></label>
           <div class="grand">Total <b id="wz-total">R$ 0,00</b></div>
         </div>
-        <div class="row between"><button class="btn ghost" id="wz-back-1">← Voltar</button><button class="btn primary" id="wz-to-3">Próximo →</button></div>
+        <div class="row between wz-foot"><button class="btn ghost" id="wz-back-1">← Voltar</button><span class="foot-total"><small>Total</small><b id="wz-foot-total">R$ 0,00</b></span><button class="btn primary" id="wz-to-3">Próximo →</button></div>
       </div>
     </div>
     <div id="wz-3" hidden>
@@ -240,8 +241,8 @@
         <label>Condições de pagamento<input id="wz-pag" placeholder="Ex: 50% entrada + 50% na entrega"></label>
         <label>Observações<textarea id="wz-obs" rows="2" placeholder="Ex: material por conta do cliente"></textarea></label>
         <label>Status<select id="wz-status"><option value="rascunho">Rascunho</option><option value="enviado">Enviado</option><option value="aprovado">Aprovado</option><option value="recusado">Recusado</option><option value="concluido">Concluído</option></select></label>
-        <button class="btn primary big" id="wz-save"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>Salvar e ver PDF</button>
-        <div class="row between"><button class="btn ghost" id="wz-back-2">← Voltar</button><button class="btn ghost" data-go="home">Sair</button></div>
+        <button class="btn ghost big" data-go="home" type="button">Sair sem salvar</button>
+        <div class="row between wz-foot"><button class="btn ghost" id="wz-back-2">← Voltar</button><button class="btn primary" id="wz-save"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>Salvar e ver PDF</button></div>
       </div>
     </div>
   </section>
@@ -250,7 +251,7 @@
   <section class="view" id="view-detail" hidden>
     <div id="detail-sheet" class="sheet"></div>
     <div class="card">
-      <div class="row wrap">
+      <div class="act-grid">
         <button class="btn whatsapp grow" id="dt-pdf-wa"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>PDF no WhatsApp</button>
         <button class="btn primary grow" id="dt-pdf"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Gerar PDF</button>
         <button class="btn whatsapp grow" id="dt-wa"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.5 0-3-.4-4.2-1L3 20l1-5.3A8.5 8.5 0 1 1 21 11.5z"/></svg>WhatsApp</button>
@@ -301,7 +302,7 @@
 
 <script src="vendor/supabase.min.js"></script>
 <script src="auth-config.js"></script>
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 <script>
 if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').then(reg=>{
  try{

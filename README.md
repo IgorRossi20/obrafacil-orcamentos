@@ -3,7 +3,7 @@
 🌐 **Produção:** https://obrafacil01.vercel.app (deploy automático a cada push na `main`)
 
 ## Login (PRD — e-mail + senha, backend Supabase)
-Tela de login conforme PRD: e-mail + senha, mostrar/ocultar senha, validação, erro genérico, "Esqueci minha senha" com link por e-mail, freio local anti-automação, métricas de login no Piloto. Sem sessão válida não há acesso às telas.
+Tela de login conforme PRD: e-mail + senha, mostrar/ocultar senha, validação, erro genérico, "Esqueci minha senha" com link por e-mail, freio local anti-automação. Sem sessão válida não há acesso às telas.
 
 **Sessão:** depois de entrar, o usuário continua logado no aparelho até tocar em **Sair** (Meus dados → Conta). Sem internet, o app abre com o último usuário que entrou naquele celular.
 
@@ -42,12 +42,11 @@ App: `index.html` + `styles.css` + `app.js` + `manifest.webmanifest` + `sw.js` (
 - Total = Σ(qtd × unit) − desconto (travado em ≥ 0). Ex.: 30×35+20×28+2×180 = R$ 1.970,00.
 - Nº sequencial único, catálogo não altera orçamentos antigos, compartilhar nunca auto-aprova.
 
-## Indicadores do piloto (§11)
-Tempo médio, % 1º orçamento concluído, % compartilhados, orçamentos/profissional, erros/abandono, facilidade percebida.
-Medidos automaticamente em Início → Ver piloto (100% local, exportável).
+## Instalar no celular
+Início → **Instalar app**. No Android/Chrome abre o convite de instalação; no iPhone (e quando o navegador não oferece o convite) mostra o passo a passo (Compartilhar → Adicionar à Tela de Início). Depois de instalado, o cartão vira atalho para Meus Dados. A tela de métricas do Piloto foi retirada do app.
 
 ## Fase 4 — backlog priorizado (só após o piloto)
 1. ✅ Rodada de atrito por inspeção (meta 3 min, uso com luva/poeira): steppers −/+ de quantidade, dados de exemplo marcados com botão "Apagar exemplos", botão "Marcar como enviado" pós-compartilhar (manual, RN-08 preservada). Validar com pedreiros reais no piloto.
-2. ✅ Mensagem de WhatsApp editável (Meus dados → Mensagem do WhatsApp, com {cliente} {obra} {numero} {total} {validade} {profissional}).
+2. ✅ Mensagem de WhatsApp profissional e editável (Meus dados → Mensagem do WhatsApp). Blocos prontos {cabecalho} {saudacao} {intro} {itens} {totais} {condicoes} {assinatura} — linhas vazias (desconto zero, sem prazo, sem obs.) somem sozinhas. Campos avulsos: {cliente} {obra} {numero} {total} {subtotal} {desconto} {validade} {profissional}.
 3. ✅ Lembrete de retorno: faixa "Retomar contato" em Meus Orçamentos (enviados a ≤7 dias do vencimento ou vencidos) + botão Cobrar no WhatsApp — sem agenda.
 4. NÃO fazer agora (§9): IA por voz, calculadora de materiais, financeiro, assinatura eletrônica, agenda/equipe, estoque, fornecedores, nota fiscal.

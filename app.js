@@ -70,8 +70,6 @@ function initDB(){
 // MÉTRICAS DO PILOTO (§11) — 100% locais, sem rede (padrões em normalizeDB, por perfil)
 let _wzStart=0;
 function mSave(){save();}
-function mMean(){const f=DB.metrics.finishes;if(!f.length)return 0;return Math.round(f.reduce((a,b)=>a+b,0)/f.length);}
-function mFmt(s){if(!s)return '—';return s<60?s+'s':Math.floor(s/60)+'min '+String(s%60).padStart(2,'0')+'s';}
 
 let route='home', editingId=null, draft={clientId:'',obra:'',endereco:'',items:[],desconto:0,prazo:'',validade:30,pag:'',obs:'',status:'rascunho'};
 let budgetFilter='todos';
@@ -84,13 +82,13 @@ function clientObj(b){return DB.clients.find(x=>x.id===b.clientId)||null;}
 function nextNumber(){DB.seq+=1;save();return String(DB.seq).padStart(6,'0');}
 
 // NAV
-const TITLES={home:'ObraFácil',budgets:'Meus Orçamentos',clients:'Meus Clientes',services:'Meus Serviços',pro:'Meus Dados',wizard:'Novo Orçamento',detail:'Orçamento',share:'Compartilhar Orçamento',pilot:'Piloto',login:'Entrar',recovery:'Recuperar senha'};
+const TITLES={home:'ObraFácil',budgets:'Meus Orçamentos',clients:'Meus Clientes',services:'Meus Serviços',pro:'Meus Dados',wizard:'Novo Orçamento',detail:'Orçamento',share:'Compartilhar Orçamento',login:'Entrar',recovery:'Recuperar senha'};
 function go(r){if(!authUser&&r!=='login'&&r!=='recovery')r='login'; // áreas protegidas (RN)
  route=r;$$('.view').forEach(v=>v.hidden=true);$('#view-'+r).hidden=false; $$('#tabbar button').forEach(b=>b.classList.toggle('active',b.dataset.go===r));
  const inLogin=r==='login';$('#topbar').style.display=inLogin?'none':'';$('#tabbar').style.display=inLogin?'none':'';document.body.style.paddingBottom=inLogin?'24px':'';
  $('#topbar-title').textContent=r==='wizard'&&editingId?'Editar Orçamento':(TITLES[r]||'ObraFácil');
  $('#btn-back').hidden=(r==='home');
- if(r==='home')renderHome(); if(r==='budgets')renderBudgets(); if(r==='clients')renderClients(); if(r==='services')renderServices(); if(r==='pro')renderPro(); if(r==='wizard')renderWizard(); if(r==='pilot')renderPilot(); if(r==='login')renderLoginStatic(); if(r==='recovery'){/* estado definido pelo fluxo */}
+ if(r==='home')renderHome(); if(r==='budgets')renderBudgets(); if(r==='clients')renderClients(); if(r==='services')renderServices(); if(r==='pro')renderPro(); if(r==='wizard')renderWizard(); if(r==='login')renderLoginStatic(); if(r==='recovery'){/* estado definido pelo fluxo */}
  window.scrollTo(0,0);}
 // Novo orçamento via botões data-go sempre começa do zero. Edição e "orçamento de cliente" usam go('wizard') direto e preservam o draft.
 // Sair do orçamento em andamento pede confirmação (toque acidental não perde o que foi digitado)
@@ -110,9 +108,7 @@ function renderHome(){$('#greet-name').textContent='Olá'+(DB.pro.nome?', '+DB.p
  const missing=steps.filter(s=>!s.ok);
  $('#onboard-card').hidden=missing.length===0;
  $('#onboard-list').innerHTML=steps.map(s=>`<div class="row"><span class="${s.ok?'tick':'todo'}">${s.ok?'✓':'○'}</span><span class="grow">${esc(s.label)}</span>${s.ok?'':`<button class="btn small secondary" data-go="${s.go}">Fazer</button>`}</div>`).join('');
- // Mini piloto
- const m=DB.metrics,n=DB.budgets.length,sh=m.shares.wa+m.shares.mail+m.shares.sys;
- $('#pilot-mini').textContent=n===0?'Nenhum orçamento criado ainda.':`${n} orçamento(s) · tempo médio ${mFmt(mMean())} · ${sh} compartilhamento(s)`;}
+ renderInstallCard();}
 $('#btn-backup-export').onclick=()=>{const blob=new Blob([JSON.stringify(DB)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='obrafacil-backup.json';a.click();toast('Backup baixado ✔');};
 $('#btn-backup-import').onclick=()=>$('#file-import').click();
 $('#file-import').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d||!Array.isArray(d.budgets)||!Array.isArray(d.clients))throw 0;DB=d;normalizeDB();save();renderHome();toast('Dados restaurados ✔');}catch{toast('Arquivo inválido');}};r.readAsText(f);e.target.value='';};
@@ -152,7 +148,7 @@ $('#fab-client').onclick=()=>openClientModal();
 
 // MODAL generic
 let modalSave=null;
-function openModal(title,html,onSave){$('#modal-title').textContent=title;$('#modal-body').innerHTML=html;$('#modal').hidden=false;modalSave=onSave;}
+function openModal(title,html,onSave,saveLabel){$('#modal-title').textContent=title;$('#modal-body').innerHTML=html;$('#modal-save').textContent=saveLabel||'Salvar';$('#modal').hidden=false;modalSave=onSave;}
 $('#modal-close').onclick=()=>$('#modal').hidden=true;
 $('#modal-save').onclick=()=>{if(modalSave)modalSave();};
 function field(id,label,val='',type='text',ph=''){return `<label>${label}<input id="${id}" type="${type}" value="${esc(val)}" placeholder="${esc(ph||'')}"></label>`;}
@@ -290,18 +286,36 @@ let _pdfThenWa=false;
 window.addEventListener('afterprint',()=>{/* RN-08/RN-09: nunca muda status automaticamente */if(_pdfThenWa){_pdfThenWa=false;openShare('wa');}});
 
 // SHARE
-const DEFAULT_MSG='Olá, tudo bem? Conforme conversamos, segue o orçamento dos serviços solicitados. Qualquer dúvida, estou à disposição. Obrigado pela oportunidade!\n\n*Orçamento #{numero} — {obra}*\n{itens}\nSubtotal: {subtotal}\nDesconto: {desconto}\n*Total: {total}*\nValidade: {validade} dias';
-const OLD_DEFAULT_MSG='Olá, tudo bem? Conforme conversamos, segue o orçamento dos serviços solicitados. Qualquer dúvida, estou à disposição. Obrigado pela oportunidade!\n\n🧱 *Orçamento #{numero} — {obra}*\nTotal: {total}\nValidade: {validade} dias';
-const FOLLOW_MSG='Olá {cliente}, tudo bem? Passando para saber se você teve chance de ver o orçamento #{numero} ({obra}) no valor de {total}. Continuo à disposição!';
+// Mensagem profissional: blocos prontos que somem quando o campo está vazio (sem "Desconto: R$ 0,00", sem "Prazo: —")
+const DEFAULT_MSG='{cabecalho}\n\n{saudacao}\n{intro}\n\n{itens}\n{totais}\n\n{condicoes}\n\nFico à disposição para qualquer dúvida. Para aprovar, é só responder esta mensagem. 👍\n\n{assinatura}';
+// Modelos padrão antigos: quem não personalizou passa para o novo automaticamente
+const OLD_DEFAULT_MSGS=['Olá, tudo bem? Conforme conversamos, segue o orçamento dos serviços solicitados. Qualquer dúvida, estou à disposição. Obrigado pela oportunidade!\n\n🧱 *Orçamento #{numero} — {obra}*\nTotal: {total}\nValidade: {validade} dias','Olá, tudo bem? Conforme conversamos, segue o orçamento dos serviços solicitados. Qualquer dúvida, estou à disposição. Obrigado pela oportunidade!\n\n*Orçamento #{numero} — {obra}*\n{itens}\nSubtotal: {subtotal}\nDesconto: {desconto}\n*Total: {total}*\nValidade: {validade} dias'];
+const FOLLOW_MSG='Olá, {cliente}! Tudo bem?\n\nPassando para saber se você conseguiu analisar o *orçamento nº {numero}* ({obra}), no valor de *{total}*.\n\nSe quiser ajustar alguma coisa, é só me falar. Fico à disposição!\n\n{profissional}';
 // DB só existe após o login (enterApp → initDB → normalizeDB); nada aqui pode tocar DB no carregamento.
-function normalizeDB(){if(!DB.pro)DB.pro={nome:'',fone:'',email:'',cidade:'',doc:'',logo:''};if(!('logo' in DB.pro))DB.pro.logo='';if(!Array.isArray(DB.clients))DB.clients=[];if(!Array.isArray(DB.services))DB.services=[];if(!Array.isArray(DB.budgets))DB.budgets=[];if(!DB.seq)DB.seq=123;if(!DB.settings||typeof DB.settings.msg!=='string')DB.settings={msg:DEFAULT_MSG};if(DB.settings.msg===OLD_DEFAULT_MSG)DB.settings.msg=DEFAULT_MSG;if(!DB.metrics)DB.metrics={starts:0,finishes:[],shares:{wa:0,mail:0,sys:0},edits:0,dups:0};const m=DB.metrics;if(typeof m.starts!=='number')m.starts=0;if(!Array.isArray(m.finishes))m.finishes=[];if(!m.shares||typeof m.shares!=='object')m.shares={wa:0,mail:0,sys:0};if(typeof m.dups!=='number')m.dups=0;}
-function itemsText(b){const items=b.items||[];if(!items.length)return '(nenhum item)';return items.map((it,i)=>`${i+1}) ${it.nome} — ${it.qtd} ${it.un} × ${BRL(it.unit)} = ${BRL((+it.qtd||0)*(+it.unit||0))}`).join('\n');}
-function fillTpl(t,b,total){const c=clientObj(b);const{sub}=calc(b.items||[],b.desconto);const m={cliente:c?c.nome:(b.clientName||'Cliente'),obra:b.obra||'',numero:b.number||'',total:BRL(total),subtotal:BRL(sub),desconto:BRL(b.desconto),validade:String(b.validade||30),profissional:DB.pro.nome||'',itens:itemsText(b)};return String(t||'').replace(/\{(cliente|obra|numero|total|subtotal|desconto|validade|profissional|itens)\}/g,(_,k)=>m[k]);}
+function normalizeDB(){if(!DB.pro)DB.pro={nome:'',fone:'',email:'',cidade:'',doc:'',logo:''};if(!('logo' in DB.pro))DB.pro.logo='';if(!Array.isArray(DB.clients))DB.clients=[];if(!Array.isArray(DB.services))DB.services=[];if(!Array.isArray(DB.budgets))DB.budgets=[];if(!DB.seq)DB.seq=123;if(!DB.settings||typeof DB.settings.msg!=='string')DB.settings={msg:DEFAULT_MSG};if(OLD_DEFAULT_MSGS.includes(DB.settings.msg))DB.settings.msg=DEFAULT_MSG;if(!DB.metrics)DB.metrics={starts:0,finishes:[],shares:{wa:0,mail:0,sys:0},edits:0,dups:0};const m=DB.metrics;if(typeof m.starts!=='number')m.starts=0;if(!Array.isArray(m.finishes))m.finishes=[];if(!m.shares||typeof m.shares!=='object')m.shares={wa:0,mail:0,sys:0};if(typeof m.dups!=='number')m.dups=0;}
+const LINE='━━━━━━━━━━━━━━━';
+const fmtQ=q=>(+q||0).toLocaleString('pt-BR',{maximumFractionDigits:2});
+function msgBlocks(b,total){const c=clientObj(b);const{sub,d}=calc(b.items||[],b.desconto);const P=DB.pro||{};
+ const cli=c?c.nome:(b.clientName&&b.clientName!=='Cliente avulso'?b.clientName:'');
+ const cabecalho=['📋 *ORÇAMENTO Nº '+b.number+'*',P.nome?'*'+P.nome+'*'+(P.cidade?' · '+P.cidade:''):'','Emitido em '+new Date(b.createdAt||Date.now()).toLocaleDateString('pt-BR')].filter(Boolean).join('\n');
+ const saudacao=cli?'Olá, *'+cli+'*! Tudo bem?':'Olá! Tudo bem?';
+ const intro=(b.obra?'Conforme conversamos, segue o orçamento para *'+b.obra+'*.':'Conforme conversamos, segue o orçamento dos serviços solicitados.')+(b.endereco?'\n📍 '+b.endereco:'');
+ const itens=[LINE,'🛠️ *SERVIÇOS*',LINE,...(b.items||[]).map((it,i)=>{const t=BRL((+it.qtd||0)*(+it.unit||0));
+  return '*'+(i+1)+'. '+it.nome+'*\n'+(it.un==='fechado'?'    Valor fechado: *'+t+'*':'    '+fmtQ(it.qtd)+' '+it.un+' × '+BRL(it.unit)+' = *'+t+'*');})].join('\n');
+ const totais=[LINE,d>0?'Subtotal: '+BRL(sub)+'\nDesconto: − '+BRL(d):'','💰 *TOTAL: '+BRL(total)+'*',LINE].filter(Boolean).join('\n');
+ const condicoes=[b.prazo?'📅 *Prazo:* '+b.prazo:'',b.pag?'💳 *Pagamento:* '+b.pag:'','⏳ *Validade:* '+(b.validade||30)+' dias (até '+validUntil(b)+')',b.obs?'📝 *Obs.:* '+b.obs:''].filter(Boolean).join('\n');
+ const assinatura=['Atenciosamente,',P.nome?'*'+P.nome+'*':'',[P.fone?'📞 '+P.fone:'',P.email?'✉️ '+P.email:''].filter(Boolean).join(' · '),P.doc?'CPF/CNPJ: '+P.doc:''].filter(Boolean).join('\n');
+ return{cabecalho,saudacao,intro,itens,totais,condicoes,assinatura,cliente:cli||'Cliente',obra:b.obra||'',numero:b.number||'',total:BRL(total),subtotal:BRL(sub),desconto:BRL(d),validade:String(b.validade||30),profissional:P.nome||''};}
+function fillTpl(t,b,total){const m=msgBlocks(b,total);
+ return String(t||'').replace(/\{(cabecalho|saudacao|intro|itens|totais|condicoes|assinatura|cliente|obra|numero|total|subtotal|desconto|validade|profissional)\}/g,(_,k)=>m[k]).replace(/\n{3,}/g,'\n\n').trim();}
+// Prévia igual ao WhatsApp: *negrito* e _itálico_
+function waHTML(t){return esc(t).replace(/\*([^*\n]+)\*/g,'<b>$1</b>').replace(/(^|\s)_([^_\n]+)_/g,'$1<i>$2</i>');}
+const plainText=t=>String(t).replace(/\*([^*\n]+)\*/g,'$1');
 function openShare(how){const b=getB();if(!b)return;go('share');const{total}=calc(b.items,b.desconto);const c=clientObj(b);
  const resumo=fillTpl(DB.settings.msg,b,total);
- $('#share-msg').textContent=resumo;$('#share-info').textContent=`${c?c.nome:(b.clientName||'')} · Total ${BRL(total)} — toque em Gerar PDF na tela anterior e anexe o arquivo aqui.`;
+ $('#share-msg').innerHTML='<div class="msg-bubble">'+waHTML(resumo)+'</div>';$('#share-info').textContent=`${c?c.nome:(b.clientName||'')} · Total ${BRL(total)} — toque em Gerar PDF na tela anterior e anexe o arquivo aqui.`;
  $('#sh-wa').onclick=()=>{DB.metrics.shares.wa+=1;mSave();const phone=(c&&c.fone||'').replace(/\D/g,'');const url=`https://wa.me/${phone? '55'+phone.replace(/^55/,'') : ''}?text=${encodeURIComponent(resumo)}`;window.open(url,'_blank');};
- $('#sh-mail').onclick=()=>{DB.metrics.shares.mail+=1;mSave();const to=c&&c.email?c.email:'';window.location.href=`mailto:${to}?subject=${encodeURIComponent('Orçamento #'+b.number+' — '+(b.obra||''))}&body=${encodeURIComponent(resumo)}`;};
+ $('#sh-mail').onclick=()=>{DB.metrics.shares.mail+=1;mSave();const to=c&&c.email?c.email:'';window.location.href=`mailto:${to}?subject=${encodeURIComponent('Orçamento #'+b.number+' — '+(b.obra||''))}&body=${encodeURIComponent(plainText(resumo))}`;};
  $('#sh-copy').onclick=async()=>{try{await navigator.clipboard.writeText(resumo);toast('Mensagem copiada ✔');}catch{toast('Não foi possível copiar');}};
  $('#sh-sys').onclick=async()=>{if(navigator.share){try{await navigator.share({title:'Orçamento #'+b.number,text:resumo});DB.metrics.shares.sys+=1;mSave();}catch{}}else{toast('Use WhatsApp ou e-mail');}};
  // RN-08: só marca como enviado com toque explícito do usuário, nunca automático
@@ -312,27 +326,23 @@ function openShare(how){const b=getB();if(!b)return;go('share');const{total}=cal
 // VALIDADE
 function validUntil(b){try{return new Date(b.createdAt+(+b.validade||0)*86400000).toLocaleDateString('pt-BR');}catch{return '—';}}
 
-// PILOTO
-function renderPilot(){const m=DB.metrics,n=DB.budgets.length,sh=m.shares.wa+m.shares.mail+m.shares.sys;
- const concl1=n>0, shared=DB.budgets.some(b=>b.status!=='rascunho')||sh>0;
- $('#pilot-stats').innerHTML=[
-  `Orçamentos criados: <b>${n}</b> (meta: 1 por profissional)`,
-  `Tempo médio de criação: <b>${mFmt(mMean())}</b> (meta: ≤ 3 min, ${m.finishes.length} medido(s))`,
-  `Inícios de orçamento: <b>${m.starts}</b> · concluídos: <b>${m.finishes.length}</b> → conclusão <b>${m.starts?Math.round(100*m.finishes.length/m.starts):0}%</b>`,
-  `Compartilhamentos: <b>${sh}</b> (WA ${m.shares.wa} · e-mail ${m.shares.mail} · outros ${m.shares.sys}) → <b>${n?Math.round(100*DB.budgets.filter(b=>b.status!=='rascunho').length/n):0}%</b> dos orçamentos saíram de rascunho`,
-  `Orçamentos por profissional (este celular): <b>${n}</b>`,
-  `Duplicações: <b>${m.dups||0}</b>`
- ].map(x=>`<div>• ${x}</div>`).join('');
- const am=aMetrics();const avgT=am.times.length?Math.round(am.times.reduce((a,b)=>a+b,0)/am.times.length):0;
- $('#pilot-stats').innerHTML+=`<div>• Login: <b>${am.ok}/${am.attempts}</b> acessos (erros: <b>${am.fail}</b>, recuperações: <b>${am.rec}</b>, tempo médio: <b>${avgT}s</b>)</div>`;
- const acc=[[!!DB.pro.nome,'Cadastrar dados do profissional'],[n>0,'Informar cliente no orçamento'],[n>0,'Adicionar/remover serviços'],[n>0,'Cálculo correto (conferir R$ 1.970,00 do exemplo)'],[DB.budgets.some(b=>+b.desconto>0)||n>0,'Aplicar desconto e pagamento'],[n>0,'Revisar antes de finalizar'],[n>0,'Gerar PDF legível'],[sh>0,'Compartilhar (WA)'],[n>0,'Salvar, consultar e duplicar'],[n>0,'Dados persistem após fechar/reabrir']];
- $('#accept-list').innerHTML=acc.map(([ok,l])=>`<div class="row"><span class="${ok?'tick':'todo'}">${ok?'✓':'○'}</span><span>${esc(l)}</span></div>`).join('')+`<p class="hint">1º orçamento concluído: ${concl1?'✓':'○'} · 1º compartilhamento: ${shared?'✓':'○'}</p>`;}
-$('#btn-metrics-export').onclick=()=>{const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),metrics:DB.metrics,counts:{budgets:DB.budgets.length,clients:DB.clients.length,services:DB.services.length}})],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='obrafacil-metricas.json';a.click();};
-$('#btn-metrics-reset').onclick=()=>{if(!confirm('Zerar métricas do piloto neste celular?'))return;DB.metrics={starts:0,finishes:[],shares:{wa:0,mail:0,sys:0},edits:0,dups:0};save();renderPilot();renderHome();};
-$('#btn-feedback').onclick=async()=>{const t=`Sou pedreiro testando o ObraFácil. Minha opinião: `;try{await navigator.clipboard.writeText(t);toast('Modelo copiado — cole no WhatsApp/e-mail');}catch{toast('Escreva sua opinião e envie ao responsável');}go('pilot');};
+// INSTALAR APP (PWA): Android/Chrome usa o convite do navegador; iPhone e demais recebem o passo a passo
 let _deferredInstall=null;
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_deferredInstall=e;const b=$('#btn-install');if(b)b.hidden=false;});
-$('#btn-install').onclick=async()=>{if(!_deferredInstall){toast('Use "Adicionar à tela inicial" no navegador');return;} _deferredInstall.prompt();await _deferredInstall.userChoice;_deferredInstall=null;$('#btn-install').hidden=true;};
+const isStandalone=()=>(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+const isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+// Já instalado: o cartão vira atalho para Meus Dados (a grade continua com 4 cartões)
+function renderInstallCard(){const b=$('#btn-install');const done=isStandalone();b.dataset.mode=done?'pro':'install';
+ $('#install-title').textContent=done?'Meus Dados':'Instalar app';$('#install-sub').textContent=done?'Perfil e mensagem':'Ícone na tela do celular';}
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_deferredInstall=e;});
+window.addEventListener('appinstalled',()=>{_deferredInstall=null;toast('App instalado ✔ — abra pelo ícone na tela');renderInstallCard();});
+$('#btn-install').onclick=async()=>{if($('#btn-install').dataset.mode==='pro'){go('pro');return;}
+ if(_deferredInstall){const ev=_deferredInstall;_deferredInstall=null;ev.prompt();try{await ev.userChoice;}catch{}return;}
+ showInstallHelp();};
+function showInstallHelp(){
+ const steps=isIOS?['Abra este site no <b>Safari</b> (no Chrome do iPhone também funciona).','Toque em <b>Compartilhar</b> — o quadrado com a seta para cima ⬆️.','Role a lista e toque em <b>Adicionar à Tela de Início</b>.','Toque em <b>Adicionar</b>. O ícone do ObraFácil aparece junto dos seus apps.']
+  :isMobile?['Toque no menu <b>⋮</b> (três pontinhos) no canto de cima do navegador.','Toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.','Confirme em <b>Instalar</b>. O ícone do ObraFácil aparece junto dos seus apps.']
+  :['Abra <b>'+esc(location.host)+'</b> no navegador do celular e toque em <b>Instalar app</b> por lá.','No computador (Chrome/Edge): clique no ícone de instalar ⊕ no fim da barra de endereço.'];
+ openModal('Instalar no celular','<ol class="install-steps">'+steps.map(t=>'<li>'+t+'</li>').join('')+'</ol><p class="hint">Depois de instalado, o app abre em tela cheia, como um aplicativo, e funciona mesmo sem internet.</p>',()=>{$('#modal').hidden=true;},'Entendi');}
 // AUTH — login, sessão, recuperação (PRD §5 RF04–RF08, US01–US03)
 // SYNC — cópia na nuvem (tabela obrafacil_data, 1 linha por usuário, RLS; SQL em supabase/obrafacil_data.sql).
 // Última gravação vence (DB.updatedAt). Sem internet ou sem tabela, o app segue 100% local.
@@ -358,7 +368,7 @@ async function syncPull(){if(!canSync())return;
   const remote=data&&data.data;const lts=+DB.updatedAt||0,rts=remote?(+remote.updatedAt||0):0;
   if(!remote){await syncPush();return;}
   if(rts>lts){const merge=!lts&&!_freshSeed;DB=merge?mergeDB(DB,remote):remote;_freshSeed=false;if(merge)DB.updatedAt=Date.now();normalizeDB();saveLocal();
-   if(['home','budgets','clients','services','pilot','pro'].includes(route))go(route);
+   if(['home','budgets','clients','services','pro'].includes(route))go(route);
    if(merge)await syncPush();else setSync('ok');}
   else if(lts>rts)await syncPush();else setSync('ok');}
  catch(e){syncFail(e);}}

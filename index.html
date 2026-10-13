@@ -10,8 +10,8 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="styles.css?v=10">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
 <div id="offline-bar" hidden>Sem conexão — seus dados estão salvos no celular.</div>
@@ -51,7 +51,7 @@
         <button class="btn secondary big" id="sup-go">Criar minha conta</button>
       </div>
     </div>
-    <p class="hint center" id="appver" style="cursor:pointer">ObraFácil · v10</p>
+    <p class="hint center" id="appver" style="cursor:pointer">ObraFácil · v11</p>
   </section>
   <!-- RECUPERAÇÃO -->
   <section class="view" id="view-recovery" hidden>
@@ -94,7 +94,7 @@
       <button class="menu-card" data-go="budgets"><span class="m-ic green"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span><b>Meus Orçamentos</b><small>Ver todos</small></button>
       <button class="menu-card" data-go="clients"><span class="m-ic amber"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.7c2.6.5 4.5 2.6 4.5 5.3"/></svg></span><b>Meus Clientes</b><small>Cadastros</small></button>
       <button class="menu-card" data-go="services"><span class="m-ic green"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l5 5-2 2-5-5z"/><path d="M12 9L4 17l3 3 8-8"/></svg></span><b>Meus Serviços</b><small>Preços e itens</small></button>
-      <button class="menu-card" data-go="pilot"><span class="m-ic amber"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20v-6M11 20V6M17 20v-9"/><path d="M3 20h18"/></svg></span><b>Piloto</b><small>Uso e metas</small></button>
+      <button class="menu-card" id="btn-install" type="button"><span class="m-ic amber"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M12 7v7M9 11l3 3 3-3"/><path d="M11 18h2"/></svg></span><b id="install-title">Instalar app</b><small id="install-sub">Ícone na tela do celular</small></button>
     </div>
     <div class="card">
       <h3>Resumo</h3>
@@ -111,33 +111,6 @@
       </div>
     </div>
     <div class="card tip">Dica: toque no ícone de perfil no topo para cadastrar seus dados. Eles saem impressos no PDF.</div>
-    <div class="card">
-      <h3>Piloto — como está o uso?</h3>
-      <p class="hint" id="pilot-mini">Nenhum orçamento criado ainda.</p>
-      <div class="row gap">
-        <button class="btn small secondary" data-go="pilot">Ver piloto</button>
-        <button class="btn small secondary" id="btn-feedback">Dar opinião</button>
-        <button class="btn small secondary" id="btn-install" hidden>Instalar app</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- PILOT -->
-  <section class="view" id="view-pilot" hidden>
-    <div class="card">
-      <h3>Piloto em obra — indicadores (§11)</h3>
-      <div id="pilot-stats" class="stack small"></div>
-      <div class="row gap">
-        <button class="btn small secondary" id="btn-metrics-export">Exportar métricas</button>
-        <button class="btn small danger" id="btn-metrics-reset">Zerar métricas</button>
-      </div>
-      <p class="hint">Métricas 100% locais (neste celular). Leve-as para a conversa de piloto. Roteiro completo no arquivo <b>PILOTO.md</b>.</p>
-      <p class="hint">Meta: orçamento simples criado e compartilhado em até 3 minutos.</p>
-    </div>
-    <div class="card">
-      <h3>Checklist de aceite (§10)</h3>
-      <div id="accept-list" class="stack small"></div>
-    </div>
   </section>
 
   <!-- BUDGETS -->
@@ -193,8 +166,8 @@
     </div>
     <div class="card">
       <h3>Mensagem do WhatsApp</h3>
-      <p class="hint">Use: {cliente} {obra} {numero} {total} {subtotal} {desconto} {validade} {profissional} {itens}</p>
-      <label>Modelo da mensagem<textarea id="set-msg" rows="5"></textarea></label>
+      <p class="hint">Blocos prontos: {cabecalho} {saudacao} {intro} {itens} {totais} {condicoes} {assinatura}<br>Campos: {cliente} {obra} {numero} {total} {subtotal} {desconto} {validade} {profissional}<br>No WhatsApp, *texto* sai em <b>negrito</b>.</p>
+      <label>Modelo da mensagem<textarea id="set-msg" rows="9"></textarea></label>
       <div class="row gap">
         <button class="btn small secondary" id="btn-msg-save">Salvar mensagem</button>
         <button class="btn small ghost" id="btn-msg-reset">Restaurar padrão</button>
@@ -302,7 +275,7 @@
 
 <script src="vendor/supabase.min.js"></script>
 <script src="auth-config.js"></script>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 <script>
 if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').then(reg=>{
  try{

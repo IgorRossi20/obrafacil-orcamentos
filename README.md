@@ -1,6 +1,6 @@
 # ObraFácil Orçamentos — MVP (PWA offline)
 
-🌐 **Produção:** https://obrafacil-orcamentos.vercel.app
+🌐 **Produção:** https://obrafacil01.vercel.app (deploy automático a cada push na `main`)
 
 ## Login (PRD — e-mail + senha, backend Supabase)
 Tela de login conforme PRD: e-mail + senha, mostrar/ocultar senha, validação, erro genérico, "Esqueci minha senha" com link por e-mail, freio local anti-automação, métricas de login no Piloto. Sem sessão válida não há acesso às telas.

@@ -465,7 +465,7 @@ $('#rec-send').onclick=async()=>{
   if(error)throw error;
  }catch(e){
   const msg=String((e&&e.message)||'');
-  $('#rec-msg').textContent=/redirect/i.test(msg)?'Recuperação mal configurada no servidor. Avise o responsável.':'Sem conexão. Tente de novo.';
+  $('#rec-msg').textContent=/redirect/i.test(msg)?'Recuperação mal configurada no servidor. Avise o responsável.':/rate|limit|too many|429|exceeded/i.test(msg)?'Muitos e-mails enviados. Aguarde 1 hora e tente de novo.':'Sem conexão. Tente de novo.';
   btnSend.disabled=false;return;
  }
  btnSend.disabled=false;

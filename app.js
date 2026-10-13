@@ -499,7 +499,7 @@ async function bootAuth(){
  go('login');
 }
 function authStatus(){if(!navigator.onLine)return 'sem internet';if(!window.supabase)return 'biblioteca indisponível';const c=window.OBRAFACIL_AUTH||{};if(!c.url||!c.anonKey)return 'backend não configurado'+(window._cfgWhy?' (detalhe: '+window._cfgWhy+')':'');return '';}
-function renderLoginStatic(){$('#login-email').value='';$('#login-pass').value='';$('#login-pass').type='password';$('#login-eye').textContent='Mostrar';loginErr('');$('#sup-box').hidden=true;const s=authStatus();$('#login-noconf').hidden=!s;if(s)$('#login-noconf').querySelector('.hint').innerHTML='<b>Login indisponível:</b> '+esc(s)+'. Conecte-se à internet e atualize o app.';}
+function renderLoginStatic(){$('#login-email').value='';$('#login-pass').value='';$('#login-pass').type='password';$('#login-eye').textContent='Mostrar';loginErr('');$('#sup-box').hidden=true;const s=authStatus();$('#login-noconf').hidden=!s;if(s)$('#login-noconf').querySelector('.hint').innerHTML='<b>Login indisponível:</b> '+esc(s)+'. Conecte-se à internet e atualize o app. Se persistir, remova este app e instale pelo link oficial: <b>obrafacil-orcamentos.vercel.app</b>';}
 // Diagnóstico: 5 toques no carimbo de versão mostram cfg/lib/rede
 (function(){let n=0,t=0;const v=$('#appver');if(v&&v.addEventListener)v.addEventListener('click',()=>{const now=Date.now();n=now-t<1500?n+1:1;t=now;if(n>=5){n=0;const c=(window.OBRAFACIL_AUTH||{});toast('diag cfg:'+(c.url?'ok':(window._cfgWhy||'falta'))+' lib:'+(window.supabase?'ok':'falta')+' net:'+(navigator.onLine?'on':'off')+' host:'+location.host);}});})();
 function updOnline(){$('#offline-bar').hidden=navigator.onLine;}

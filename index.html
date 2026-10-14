@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="icon-180.png">
-<link rel="stylesheet" href="styles.css?v=11">
+<link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
 <div id="offline-bar" hidden>Sem conexão — seus dados estão salvos no celular.</div>
@@ -41,7 +41,6 @@
       <p class="hint" id="login-err" role="alert"></p>
       <button class="btn primary big" id="login-go">Entrar</button>
       <button class="btn ghost big" id="login-forgot" type="button">Esqueci minha senha</button>
-      <button class="btn ghost big" id="login-resend" type="button" hidden>Reenviar confirmação</button>
       <button class="btn ghost big" id="login-signup" type="button">Criar conta</button>
       <div id="sup-box" hidden>
         <label>E-mail<input id="sup-email" type="email" autocomplete="username" inputmode="email" maxlength="254" placeholder="voce@email.com"></label>
@@ -51,7 +50,7 @@
         <button class="btn secondary big" id="sup-go">Criar minha conta</button>
       </div>
     </div>
-    <p class="hint center" id="appver" style="cursor:pointer">ObraFácil · v11</p>
+    <p class="hint center" id="appver" style="cursor:pointer">ObraFácil · v12</p>
   </section>
   <!-- RECUPERAÇÃO -->
   <section class="view" id="view-recovery" hidden>
@@ -151,7 +150,14 @@
       <div class="row"><b id="prof-name" class="grow">—</b></div>
       <p class="hint" id="sync-status" aria-live="polite"></p>
       <div class="row gap">
+        <button class="btn small secondary" id="btn-pw-toggle" type="button">Alterar senha</button>
         <button class="btn small secondary" id="btn-logout">Sair</button>
+      </div>
+      <div id="pw-box" hidden>
+        <label>Nova senha (mín. 6 caracteres)<div class="row"><input id="pw-new1" type="password" autocomplete="new-password" class="grow" maxlength="72"><button class="btn small secondary" id="pw-eye" type="button">Mostrar</button></div></label>
+        <label>Repita a nova senha<input id="pw-new2" type="password" autocomplete="new-password" maxlength="72"></label>
+        <p class="hint" id="pw-msg" role="alert"></p>
+        <button class="btn primary big" id="pw-save">Salvar nova senha</button>
       </div>
     </div>    <div class="card">
       <h3>Meus dados (saem no PDF)</h3>
@@ -275,7 +281,7 @@
 
 <script src="vendor/supabase.min.js"></script>
 <script src="auth-config.js"></script>
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 <script>
 if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').then(reg=>{
  try{

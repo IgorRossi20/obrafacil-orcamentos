@@ -7,11 +7,15 @@ Tela de login conforme PRD: e-mail + senha, mostrar/ocultar senha, validação, 
 
 **Sessão:** depois de entrar, o usuário continua logado no aparelho até tocar em **Sair** (Meus dados → Conta). Sem internet, o app abre com o último usuário que entrou naquele celular.
 
-**Cadastro (estado atual do Supabase):** cadastro público **ligado** + **confirmação por e-mail obrigatória**. Quem toca em "Criar conta" recebe um link; ao abrir o link no celular, entra direto no app. Para fechar o cadastro público: Authentication → Sign In/Up → desligue "Allow new users to sign up" e esconda o botão `#login-signup` no `index.html`.
+**Cadastro simples (sem confirmação):** "Criar conta" pede e-mail + senha e já entra no app. Exige no Supabase: Authentication → Sign In/Up → Email → **"Confirm email" desligado**. O único e-mail que o app manda é o de **recuperar senha**. Para fechar o cadastro público: desligue "Allow new users to sign up" e esconda o botão `#login-signup` no `index.html`.
+
+**Senha:** "Esqueci minha senha" manda link por e-mail (vale só o último; link vencido reabre o pedido). Logado, dá para trocar em Meus dados → Conta → **Alterar senha**.
+
+**Cada usuário vê só os próprios dados:** no celular os dados ficam em `obrafacil_v1_<id do usuário>` e na nuvem a tabela tem RLS (`auth.uid() = user_id`). Trocar de conta troca tudo.
 
 ### Ativar o backend (5 min, uma vez)
 1. Crie o projeto em supabase.com → copie **URL** e **anon public key** (Settings → API).
-2. Em Authentication → Sign In/Up: ative o provedor **Email**. "Confirm email" ligado = usuário confirma pelo link antes de entrar (atual); desligado = entra na hora.
+2. Em Authentication → Sign In/Up: ative o provedor **Email**. deixe "Confirm email" **desligado** (cadastro entra na hora).
 3. Em Authentication → URL Configuration: coloque `https://obrafacil-orcamentos.vercel.app` como **Site URL** e também nas **Redirect URLs** (links de confirmação e de recuperação de senha voltam para lá).
 4. Configure as variáveis `SUPABASE_URL` e `SUPABASE_ANON_KEY` no projeto da Vercel (lidas por `api/config.js`), ou cole URL e chave em `auth-config.js`.
 5. **Nuvem dos dados:** Supabase → SQL Editor → cole e rode `supabase/obrafacil_data.sql` (uma vez). Sem isso o app funciona, mas os dados ficam só no celular (Meus dados mostra "Nuvem: indisponível").

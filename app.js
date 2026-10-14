@@ -356,15 +356,17 @@ function syncFail(e){const msg=String((e&&(e.message||e.code))||e);
 function queueSync(){if(!canSync())return;clearTimeout(_syncT);_syncT=setTimeout(syncPush,1500);}
 async function syncPush(){if(!canSync())return;if(_syncBusy){_syncAgain=true;return;}_syncBusy=true;setSync('busy');
  const uidNow=authUser.id;
- try{const{error}=await supa.from(SYNC_TABLE).upsert({user_id:uidNow,data:DB,updated_at:new Date().toISOString()});if(error)throw error;setSync('ok');}
- catch(e){syncFail(e);}
+ try{const{error}=await supa.from(SYNC_TABLE).upsert({user_id:uidNow,data:DB,updated_at:new Date().toISOString()});if(error)throw error;if(sameUser(uidNow))setSync('ok');}
+ catch(e){if(sameUser(uidNow))syncFail(e);}
  _syncBusy=false;if(_syncAgain){_syncAgain=false;queueSync();}}
 // União por id (nuvem vence no conflito) — só para dados antigos sem carimbo de hora, para não perder nada.
 function mergeDB(local,remote){const out=JSON.parse(JSON.stringify(remote));
  ['clients','services','budgets'].forEach(k=>{const ids=new Set((out[k]||[]).map(x=>x.id));(local[k]||[]).forEach(x=>{if(!x.ex&&!ids.has(x.id))(out[k]=out[k]||[]).push(x);});});
  out.seq=Math.max(+local.seq||0,+remote.seq||0);if(!out.pro||!out.pro.nome)out.pro=local.pro;return out;}
-async function syncPull(){if(!canSync())return;
- try{const{data,error}=await supa.from(SYNC_TABLE).select('data').eq('user_id',authUser.id).maybeSingle();if(error)throw error;
+// Resposta que chega depois de sair/trocar de conta é descartada: dados de um usuário nunca caem em outro.
+const sameUser=id=>!!(authUser&&authUser.id===id&&DB);
+async function syncPull(){if(!canSync())return;const uidNow=authUser.id;
+ try{const{data,error}=await supa.from(SYNC_TABLE).select('data').eq('user_id',uidNow).maybeSingle();if(!sameUser(uidNow))return;if(error)throw error;
   const remote=data&&data.data;const lts=+DB.updatedAt||0,rts=remote?(+remote.updatedAt||0):0;
   if(!remote){await syncPush();return;}
   if(rts>lts){const merge=!lts&&!_freshSeed;DB=merge?mergeDB(DB,remote):remote;_freshSeed=false;if(merge)DB.updatedAt=Date.now();normalizeDB();saveLocal();
@@ -389,7 +391,7 @@ function enterApp(user,offline){authUser={id:user.id,email:user.email,offline:!!
 // Sair: envia o que estiver pendente, encerra a sessão e esquece o último usuário deste aparelho.
 async function logout(){clearTimeout(_syncT);if(canSync()&&navigator.onLine){try{await syncPush();}catch{}}
  try{if(supa)await supa.auth.signOut();}catch{}try{localStorage.removeItem(LAST_USER);}catch{}
- authUser=null;DB=null;KEY='obrafacil_v1';try{window._logged=false;}catch(e){}go('login');}
+ authUser=null;DB=null;KEY='obrafacil_v1';$('#pw-box').hidden=true;try{window._logged=false;}catch(e){}go('login');}
 function loginErr(m){const e=$('#login-err');e.textContent=m||'';}
 function mapAuthError(e){const m=String((e&&e.message)||'');if(/banned|blocked|suspended|disabled/i.test(m))return 'Acesso bloqueado. Fale com o responsável.';return 'E-mail ou senha inválidos.';} // RF06
 const _fails=[]; // timestamps de falhas (sessão) — freio local anti-automação
@@ -433,16 +435,14 @@ $('#login-go').onclick=async()=>{
  }catch(e){m.fail++;_fails.push(Date.now());aSave(m);loginErr(mapAuthError(e));} // RF06
  btn.disabled=false;btn.textContent='Entrar';
 };
-$('#login-forgot').onclick=()=>go('recovery');
-$('#login-resend').onclick=async()=>{
- const email=normEmail($('#login-email').value);
- if(!emailOk(email)){loginErr('Digite seu e-mail acima para reenviar.');$('#login-email').focus();return;}
- if(!supa){loginErr('Indisponível: sem conexão.');return;}
- const btn=$('#login-resend');btn.disabled=true;
- try{const{error}=await supa.auth.resend({type:'signup',email});if(error)throw error;loginErr('');toast('E-mail de confirmação reenviado ✔');}
- catch(e){loginErr('Não foi possível reenviar. Tente de novo.');}
- btn.disabled=false;
-};
+// Abre a recuperação sempre na etapa 1 (pedir link), já com o e-mail digitado no login
+function openRecoveryRequest(msg){go('recovery');$('#rec-req').hidden=false;$('#rec-set').hidden=true;
+ const e=normEmail($('#login-email').value);if(e)$('#rec-email').value=e;
+ const m=$('#rec-msg');m.classList.remove('ok');m.textContent=msg||'';$('#rec-send').disabled=false;}
+// Link do e-mail aberto: mostra a etapa 2 (nova senha) com a sessão temporária
+function openRecoverySet(){go('recovery');$('#rec-req').hidden=true;$('#rec-set').hidden=false;
+ $('#rec-pass1').value='';$('#rec-pass2').value='';$('#rec-msg2').textContent='';$('#rec-save').disabled=false;}
+$('#login-forgot').onclick=()=>openRecoveryRequest();
 $('#login-signup').onclick=()=>{const b=$('#sup-box');b.hidden=!b.hidden;const m=$('#sup-msg');m.textContent='';m.classList.remove('ok');};
 $('#sup-go').onclick=async()=>{
  const box=$('#sup-msg');box.classList.remove('ok');box.textContent='';
@@ -457,25 +457,32 @@ $('#sup-go').onclick=async()=>{
  const btn=$('#sup-go');btn.disabled=true;btn.textContent='Criando...';
  const m=aMetrics();m.attempts++;
  try{
-  // O link de confirmação volta para este app (a URL precisa estar nas Redirect URLs do Supabase).
-  const {data,error}=await supa.auth.signUp({email,password:a,options:{emailRedirectTo:location.origin+location.pathname}});
+  // Cadastro simples: sem confirmação por e-mail, a conta já entra na hora.
+  const {data,error}=await supa.auth.signUp({email,password:a});
   if(error)throw error;
-  // Com confirmação por e-mail ligada, e-mail já cadastrado volta sem erro e sem identidades.
+  // E-mail já cadastrado volta sem erro e sem identidades (quando o servidor ainda exige confirmação).
   if(data.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0)throw new Error('already registered');
+  let user=data.session&&data.session.user;
+  if(!user){const r=await supa.auth.signInWithPassword({email,password:a});if(r.error)throw r.error;user=r.data.user;}
   m.ok++;aSave(m);
-  if(data.session){enterApp(data.session.user);}
-  else{box.textContent='Conta criada! Enviamos um link para '+email+'. Abra o e-mail neste celular e toque no link para entrar (veja também o spam).';box.classList.add('ok');}
+  [p1,p2].forEach(e=>e.value='');
+  enterApp(user);toast('Conta criada ✔');
  }catch(e){
   m.fail++;aSave(m);
   const msg=String((e&&e.message)||'');
-  box.textContent=/not allowed|disabled/i.test(msg)?'Criação de contas desativada. Fale com o responsável.':/already|registered|exists|duplicate/i.test(msg)?'Este e-mail já tem conta. Use Entrar.':mapAuthError(e);
+  box.textContent=/not allowed|disabled/i.test(msg)?'Criação de contas desativada. Fale com o responsável.'
+   :/already|registered|exists|duplicate/i.test(msg)?'Este e-mail já tem conta. Use Entrar ou Esqueci minha senha.'
+   :/not confirmed/i.test(msg)?'Conta criada, mas o servidor ainda exige confirmação por e-mail. O responsável precisa desligar "Confirm email" no Supabase.'
+   :/rate|limit|too many|429/i.test(msg)?'Muitas tentativas. Aguarde alguns minutos e tente de novo.'
+   :/weak|password/i.test(msg)?'Senha fraca. Use ao menos 6 caracteres, misturando letras e números.'
+   :/fetch|network/i.test(msg)?'Sem conexão. Tente de novo.':'Não foi possível criar a conta. Tente de novo.';
  }
  btn.disabled=false;btn.textContent='Criar minha conta';
 };
 // Recuperação (RF07/US03) — etapa 1: pedir link por e-mail
 $('#rec-send').onclick=async()=>{
  const emailEl=$('#rec-email'),email=normEmail(emailEl.value);
- mark(emailEl,false);
+ mark(emailEl,false);$('#rec-msg').classList.remove('ok');$('#rec-msg').textContent='';
  if(!emailOk(email)){$('#rec-msg').textContent='Informe um e-mail válido.';mark(emailEl,true);emailEl.focus();return;}
  if(!supa){$('#rec-msg').textContent='Indisponível: sem conexão ou backend não configurado.';return;}
  const btnSend=$('#rec-send');btnSend.disabled=true;
@@ -490,19 +497,39 @@ $('#rec-send').onclick=async()=>{
  }
  btnSend.disabled=false;
  const m=aMetrics();m.rec++;aSave(m);
- $('#rec-msg').textContent='Se o e-mail estiver cadastrado, você receberá o link de recuperação.'; // US03: sem revelar cadastro
+ const rm=$('#rec-msg');rm.classList.add('ok');
+ rm.textContent='Pronto! Se o e-mail estiver cadastrado, chega um link em instantes (veja também o spam). Abra o link e escolha a nova senha.'; // US03: sem revelar cadastro
 };
-// Recuperação — etapa 2: definir nova senha (link do e-mail)
-$('#rec-save').onclick=async()=>{
- const p1=$('#rec-pass1'),p2=$('#rec-pass2'),a=p1.value,b=p2.value;
+// Troca de senha (usada pelo link de recuperação e por "Alterar senha" em Meus Dados)
+function pwErrMsg(e){const msg=String((e&&e.message)||'');
+ if(/different from the old|same/i.test(msg))return 'A nova senha precisa ser diferente da atual.';
+ if(/weak|at least|characters/i.test(msg))return 'Senha fraca. Use ao menos 6 caracteres, misturando letras e números.';
+ if(/session|expired|jwt|not authenticated/i.test(msg))return 'Sessão expirada. Peça um novo link em Esqueci minha senha.';
+ if(/fetch|network/i.test(msg))return 'Sem conexão. Tente de novo.';
+ return 'Não foi possível trocar a senha. Tente de novo.';}
+async function changePassword(p1,p2,msgEl,btn){
+ const a=p1.value,b=p2.value;msgEl.classList.remove('ok');msgEl.textContent='';
  mark(p1,false);mark(p2,false);
- if(a.length<6){$('#rec-msg2').textContent='A senha precisa de ao menos 6 caracteres.';mark(p1,true);p1.focus();return;}
- if(a.length>72){$('#rec-msg2').textContent='Use uma senha de até 72 caracteres.';mark(p1,true);return;}
- if(a!==b){$('#rec-msg2').textContent='As senhas não conferem.';mark(p2,true);p2.focus();return;}
- if(!supa){$('#rec-msg2').textContent='Indisponível: sem conexão.';return;}
- const {data,error}=await supa.auth.updateUser({password:a});
- if(error){$('#rec-msg2').textContent='Não foi possível trocar. Peça um novo link.';return;}
- enterApp(data.user);
+ if(a.length<6){msgEl.textContent='A senha precisa de ao menos 6 caracteres.';mark(p1,true);p1.focus();return null;}
+ if(a.length>72){msgEl.textContent='Use uma senha de até 72 caracteres.';mark(p1,true);return null;}
+ if(a!==b){msgEl.textContent='As senhas não conferem.';mark(p2,true);p2.focus();return null;}
+ if(!supa||!navigator.onLine){msgEl.textContent='Sem conexão. Conecte-se à internet para trocar a senha.';return null;}
+ const label=btn.textContent;btn.disabled=true;btn.textContent='Salvando...';
+ try{const{data,error}=await supa.auth.updateUser({password:a});if(error)throw error;p1.value='';p2.value='';return data.user;}
+ catch(e){msgEl.textContent=pwErrMsg(e);return null;}
+ finally{btn.disabled=false;btn.textContent=label;}}
+// Recuperação — etapa 2: definir nova senha (link do e-mail) e entrar
+$('#rec-save').onclick=async()=>{
+ const user=await changePassword($('#rec-pass1'),$('#rec-pass2'),$('#rec-msg2'),$('#rec-save'));
+ if(user){enterApp(user);toast('Senha alterada ✔');}
+};
+// Alterar senha já logado (Meus Dados → Conta)
+eyeToggle('pw-eye','pw-new1');wireEnter('pw-new2','pw-save');
+$('#btn-pw-toggle').onclick=()=>{const b=$('#pw-box');b.hidden=!b.hidden;$('#pw-new1').value='';$('#pw-new2').value='';const m=$('#pw-msg');m.textContent='';m.classList.remove('ok');if(!b.hidden)$('#pw-new1').focus();};
+$('#pw-save').onclick=async()=>{
+ if(!authUser||authUser.offline){$('#pw-msg').textContent='Sem conexão. Conecte-se à internet para trocar a senha.';return;}
+ const user=await changePassword($('#pw-new1'),$('#pw-new2'),$('#pw-msg'),$('#pw-save'));
+ if(user){const m=$('#pw-msg');m.classList.add('ok');m.textContent='Senha alterada ✔ Use a nova senha no próximo login.';toast('Senha alterada ✔');}
 };
 const CFG_KEY='obrafacil_cfg'; // última config válida do backend, para abrir sem internet
 function lastUser(){try{const u=JSON.parse(localStorage.getItem(LAST_USER));return u&&u.id?u:null;}catch{return null;}}
@@ -524,13 +551,14 @@ async function bootAuth(){
  renderLoginStatic();
  if(!initAuth()){const u=lastUser();if(u&&!navigator.onLine){enterApp(u,true);return;}go('login');return;}
  // Sessão expirada/revogada em outro lugar: volta ao login
- supa.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT'&&authUser){authUser=null;DB=null;KEY='obrafacil_v1';try{window._logged=false;}catch(e){}setTimeout(()=>go('login'),0);}});
+ supa.auth.onAuthStateChange(ev=>{if(ev==='PASSWORD_RECOVERY'){setTimeout(openRecoverySet,0);return;}
+  if(ev==='SIGNED_OUT'&&authUser){authUser=null;DB=null;KEY='obrafacil_v1';try{window._logged=false;}catch(e){}setTimeout(()=>go('login'),0);}});
  let session=null,sessErr=null;
  try{const{data,error}=await supa.auth.getSession();session=data&&data.session;sessErr=error;}catch(e){sessErr=e;}
  // Link de recuperação: abre a troca de senha com a sessão temporária
- if(isRecovery&&session){go('recovery');$('#rec-req').hidden=true;$('#rec-set').hidden=false;history.replaceState(null,'',location.pathname);return;}
- // Link com erro (expirado/já usado, ex: otp_expired): explica e oferece reenvio
- if(/error=access_denied/.test(location.hash||'')){history.replaceState(null,'',location.pathname);go('login');loginErr('Link expirado ou já usado. Toque em Reenviar confirmação abaixo.');$('#login-resend').hidden=false;return;}
+ if(isRecovery&&session){history.replaceState(null,'',location.pathname);openRecoverySet();return;}
+ // Link com erro (expirado/já usado, ex: otp_expired): explica e já abre o pedido de um link novo
+ if(/error=|error_code=/.test(location.hash||'')||/error=/.test(location.search||'')){history.replaceState(null,'',location.pathname);openRecoveryRequest('Link expirado ou já usado. Peça um novo link abaixo — vale só o mais recente.');return;}
  // Sessão guardada neste aparelho (inclui volta do link de confirmação de cadastro): entra direto
  if(session){if(location.hash)history.replaceState(null,'',location.pathname);enterApp(session.user);return;}
  // Sem internet e sessão não pôde ser renovada: entra com o último usuário deste aparelho (dados são locais)
@@ -539,7 +567,7 @@ async function bootAuth(){
  go('login');
 }
 function authStatus(){if(!navigator.onLine)return 'sem internet';if(!window.supabase)return 'biblioteca indisponível';const c=window.OBRAFACIL_AUTH||{};if(!c.url||!c.anonKey)return 'backend não configurado'+(window._cfgWhy?' (detalhe: '+window._cfgWhy+')':'');return '';}
-function renderLoginStatic(){$('#login-email').value='';$('#login-pass').value='';$('#login-pass').type='password';$('#login-eye').textContent='Mostrar';loginErr('');$('#sup-box').hidden=true;$('#login-resend').hidden=true;const s=authStatus();$('#login-noconf').hidden=!s;if(s)$('#login-noconf').querySelector('.hint').innerHTML='<b>Login indisponível:</b> '+esc(s)+'. Conecte-se à internet e atualize o app. Se persistir, remova este app e instale pelo link oficial: <b>obrafacil-orcamentos.vercel.app</b>';}
+function renderLoginStatic(){$('#login-email').value='';$('#login-pass').value='';$('#login-pass').type='password';$('#login-eye').textContent='Mostrar';loginErr('');$('#sup-box').hidden=true;const s=authStatus();$('#login-noconf').hidden=!s;if(s)$('#login-noconf').querySelector('.hint').innerHTML='<b>Login indisponível:</b> '+esc(s)+'. Conecte-se à internet e atualize o app. Se persistir, remova este app e instale pelo link oficial: <b>obrafacil-orcamentos.vercel.app</b>';}
 // Diagnóstico: 5 toques no carimbo de versão mostram cfg/lib/rede
 (function(){let n=0,t=0;const v=$('#appver');if(v&&v.addEventListener)v.addEventListener('click',()=>{const now=Date.now();n=now-t<1500?n+1:1;t=now;if(n>=5){n=0;const c=(window.OBRAFACIL_AUTH||{});toast('diag cfg:'+(c.url?'ok':(window._cfgWhy||'falta'))+' lib:'+(window.supabase?'ok':'falta')+' net:'+(navigator.onLine?'on':'off')+' host:'+location.host);}});})();
 function updOnline(){$('#offline-bar').hidden=navigator.onLine;}
